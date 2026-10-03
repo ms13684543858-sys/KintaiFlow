@@ -1,0 +1,51 @@
+# 勤怠フロー 一式をまとめて起動する（開発・検証・小規模本番の共通構成）。
+#   起動:  docker compose up -d --build
+#   停止:  docker compose down            （データは volume に残る）
+# 秘密情報は .env に書く（.env.example をコピー）。.env は Git に入れない。
+services:
+  db:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: kintaiflow
+      POSTGRES_USER: kintaiflow
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD を .env に設定してください}
+      TZ: Asia/Tokyo
+    volumes:
+      - dbdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kintaiflow -d kintaiflow"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/kintaiflow
+      SPRING_DATASOURCE_USERNAME: kintaiflow
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      KINTAIFLOW_JWT_SECRET: ${JWT_SECRET:?JWT_SECRET を .env に設定してください}
+      # 開発用ダミーユーザーを入れたい時だけ設定する。本番では空にする。
+      KINTAIFLOW_DEV_SEED_PASSWORD: ${DEV_SEED_PASSWORD:-}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "${WEB_PORT:-8081}:80"
+
+volumes:
+  dbdata:

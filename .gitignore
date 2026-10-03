@@ -1,0 +1,9 @@
+# 秘密情報・ローカル設定は Git に入れない
+.env
+application-local.properties
+# ビルド生成物
+node_modules/
+dist/
+target/
+.idea/
+*.iml

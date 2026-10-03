@@ -1,0 +1,43 @@
+/* 勤怠フロー 共通スタイル（紺系をブランドカラーとする：KF-RD-002） */
+:root {
+  --navy-900: #0f1f3d;
+  --navy-700: #1b3566;
+  --navy-500: #2b57a7;
+  --navy-100: #e6edf8;
+  --bg: #f4f6fa;
+  --text: #1c2433;
+  --muted: #6b7690;
+  --border: #d5dbe8;
+  --danger: #c0392b;
+  --danger-bg: #fdecea;
+  --ok: #1e7b4a;
+  --radius: 8px;
+  font-family: "Yu Gothic UI", "Meiryo", "Hiragino Sans", sans-serif;
+  color: var(--text);
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); font-size: 15px; line-height: 1.6; }
+h1, h2, h3 { margin: 0; font-weight: 600; }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 10px 20px; font-size: 15px; font-weight: 600; font-family: inherit;
+  color: #fff; background: var(--navy-700); border: 0; border-radius: var(--radius); cursor: pointer;
+  transition: background .15s;
+}
+.btn:hover:not(:disabled) { background: var(--navy-500); }
+.btn:disabled { background: #a9b6d0; cursor: default; }
+.btn-ghost { color: var(--navy-700); background: transparent; border: 1px solid var(--border); }
+.btn-ghost:hover:not(:disabled) { background: var(--navy-100); }
+
+.field { display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 600; }
+.field input {
+  padding: 11px 12px; font-size: 16px; font-family: inherit; font-weight: 400;
+  border: 1px solid var(--border); border-radius: var(--radius); background: #fff;
+}
+.field input:focus { outline: 2px solid var(--navy-500); outline-offset: 0; border-color: var(--navy-500); }
+.hint { font-size: 12px; font-weight: 400; color: var(--muted); }
+.alert { padding: 10px 12px; font-size: 14px; border-radius: var(--radius); }
+.alert-error { color: var(--danger); background: var(--danger-bg); }
+.alert-ok { color: var(--ok); background: #e6f4ec; }
+.alert-info { color: var(--navy-700); background: var(--navy-100); }
