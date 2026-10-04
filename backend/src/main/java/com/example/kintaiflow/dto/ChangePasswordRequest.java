@@ -9,6 +9,6 @@ public record ChangePasswordRequest(
         String currentPassword,
 
         @NotBlank(message = "新しいパスワードは必須入力です。")
-        @Size(max = 72, message = "新しいパスワードは72文字以内で入力してください。")
+        @Size(max = 128, message = "新しいパスワードは128文字以内で入力してください。")
         String newPassword) {
 }

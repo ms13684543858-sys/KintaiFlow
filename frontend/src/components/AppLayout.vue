@@ -15,7 +15,7 @@ function logout() { auth.clear(); router.push('/login') }
     <header class="bar">
       <div class="brand">勤怠フロー</div>
       <nav class="menu">
-        <router-link to="/home">ホーム</router-link>
+        <router-link to="/home">打刻・勤怠</router-link>
         <router-link to="/password">パスワード変更</router-link>
       </nav>
       <div class="who">

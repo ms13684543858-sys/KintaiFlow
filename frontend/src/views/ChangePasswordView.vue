@@ -1,9 +1,11 @@
 <script setup>
 // API-023 POST /api/auth/password
 import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import AppLayout from '../components/AppLayout.vue'
 import { api, auth } from '../api/client'
 
+const router = useRouter()
 const current = ref('')
 const next = ref('')
 const confirm = ref('')
@@ -20,9 +22,9 @@ async function onSubmit() {
   loading.value = true
   try {
     await api('POST', '/api/auth/password', { currentPassword: current.value, newPassword: next.value })
-    auth.markPasswordChanged()
-    done.value = true
-    current.value = next.value = confirm.value = ''
+    // 変更後は古いトークン（要変更フラグ付き）を捨てて、新しいパスワードでログインし直してもらう
+    auth.clear()
+    router.push({ path: '/login', query: { changed: '1' } })
   } catch (e) {
     errorMessage.value = e.message
   } finally {
@@ -49,7 +51,6 @@ async function onSubmit() {
         <input v-model="confirm" type="password" autocomplete="new-password" />
       </label>
       <p v-if="errorMessage" class="alert alert-error" role="alert">{{ errorMessage }}</p>
-      <p v-if="done" class="alert alert-ok" role="status">パスワードを変更しました。</p>
       <button class="btn" type="submit" :disabled="loading">{{ loading ? '変更中…' : '変更する' }}</button>
     </form>
   </AppLayout>

@@ -59,6 +59,6 @@ public class BootstrapAdminInitializer implements CommandLineRunner {
         u.setStatus("ACTIVE");
         u.setMustChangePassword(true);
         userRepository.save(u);
-        log.info("Bootstrap admin created: {}", u.getEmail());
+        log.info("Bootstrap admin created (id={}).", u.getId());
     }
 }

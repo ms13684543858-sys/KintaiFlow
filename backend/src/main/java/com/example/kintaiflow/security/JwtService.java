@@ -33,6 +33,7 @@ public class JwtService {
                 .expiresAt(now.plus(expirationHours, ChronoUnit.HOURS))
                 .subject(String.valueOf(user.getId()))   // 誰のトークンか
                 .claim("role", user.getRole())           // ロール（権限チェックに使う）
+                .claim("mcp", user.isMustChangePassword()) // 初期パスワードのまま = true（変更するまで他APIを拒否）
                 .build();
         JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).build();
         return encoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();

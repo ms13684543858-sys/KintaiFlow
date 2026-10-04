@@ -1,10 +1,11 @@
 <script setup>
 // SCR-001 ログイン画面 / API-001 POST /api/auth/login
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { api, auth } from '../api/client'
 
 const router = useRouter()
+const route = useRoute()
 const email = ref('')
 const password = ref('')
 const errorMessage = ref('')
@@ -45,6 +46,9 @@ async function onSubmit() {
       <label class="field">パスワード
         <input v-model="password" type="password" autocomplete="current-password" />
       </label>
+      <p v-if="route.query.changed && !errorMessage" class="alert alert-ok" role="status">
+        パスワードを変更しました。新しいパスワードでログインしてください。
+      </p>
       <p v-if="errorMessage" class="alert alert-error" role="alert">{{ errorMessage }}</p>
       <button class="btn" type="submit" :disabled="loading">{{ loading ? '認証中…' : 'ログイン' }}</button>
     </form>

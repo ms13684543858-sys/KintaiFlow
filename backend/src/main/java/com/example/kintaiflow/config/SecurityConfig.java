@@ -17,7 +17,10 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -83,7 +86,26 @@ public class SecurityConfig {
                                 writeError(res, 401, "E-001", "認証が必要です。再度ログインしてください。"))
                         .accessDeniedHandler((req, res, ex) ->
                                 writeError(res, 403, "E-010", "この操作を行う権限がありません。")));
+        // 初期パスワードのままのトークンは、パスワード変更 API 以外を拒否する（E-019）
+        http.addFilterAfter(new PasswordChangeRequiredFilter(), BearerTokenAuthenticationFilter.class);
         return http.build();
+    }
+
+    /** mcp=true（要パスワード変更）のトークンで、パスワード変更以外の API を呼ぶと 403 を返す。 */
+    static class PasswordChangeRequiredFilter extends OncePerRequestFilter {
+        @Override
+        protected void doFilterInternal(jakarta.servlet.http.HttpServletRequest req,
+                                        jakarta.servlet.http.HttpServletResponse res,
+                                        jakarta.servlet.FilterChain chain) throws jakarta.servlet.ServletException, java.io.IOException {
+            var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+            if (auth instanceof JwtAuthenticationToken token
+                    && Boolean.TRUE.equals(token.getToken().getClaimAsBoolean("mcp"))
+                    && !"/api/auth/password".equals(req.getRequestURI())) {
+                writeError(res, 403, "E-019", "初期パスワードのままです。先にパスワードを変更してください。");
+                return;
+            }
+            chain.doFilter(req, res);
+        }
     }
 
     private static void writeError(jakarta.servlet.http.HttpServletResponse res, int status,
