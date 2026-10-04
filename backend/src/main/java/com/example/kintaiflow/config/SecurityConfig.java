@@ -1,11 +1,14 @@
 package com.example.kintaiflow.config;
 
+import com.example.kintaiflow.entity.User;
+import com.example.kintaiflow.repository.UserRepository;
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -32,6 +35,7 @@ import java.util.List;
 
 /** 認証・認可の設定（KF-BD-004 権限設計書、KF-DD-002 共通仕様）。 */
 @Configuration
+@EnableMethodSecurity   // @PreAuthorize を有効にする
 public class SecurityConfig {
 
     /** パスワードは BCrypt でハッシュ化して保存・照合する（平文は保存しない）。 */
@@ -70,7 +74,8 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
-                                                   JwtAuthenticationConverter converter) throws Exception {
+                                                   JwtAuthenticationConverter converter,
+                                                   UserRepository userRepository) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())                       // トークン方式なので CSRF は不要
                 .cors(Customizer.withDefaults())
@@ -78,6 +83,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                         .requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/**").permitAll()
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")   // 管理系 API は管理者のみ（多重防御）
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth -> oauth
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(converter))
@@ -87,8 +93,48 @@ public class SecurityConfig {
                         .accessDeniedHandler((req, res, ex) ->
                                 writeError(res, 403, "E-010", "この操作を行う権限がありません。")));
         // 初期パスワードのままのトークンは、パスワード変更 API 以外を拒否する（E-019）
-        http.addFilterAfter(new PasswordChangeRequiredFilter(), BearerTokenAuthenticationFilter.class);
+        http.addFilterAfter(new ActiveUserFilter(userRepository), BearerTokenAuthenticationFilter.class);
+        http.addFilterAfter(new PasswordChangeRequiredFilter(), ActiveUserFilter.class);
         return http.build();
+    }
+
+    /**
+     * 発行済みトークンでも、ユーザーが無効化・削除されていたり、トークン発行後にパスワードが変更・再設定されていたら
+     * 401 にする（退職者のトークンが期限まで使えてしまうのを防ぐ）。1リクエストにつき主キー検索1回。
+     */
+    static class ActiveUserFilter extends OncePerRequestFilter {
+        private final UserRepository userRepository;
+
+        ActiveUserFilter(UserRepository userRepository) {
+            this.userRepository = userRepository;
+        }
+
+        @Override
+        protected void doFilterInternal(jakarta.servlet.http.HttpServletRequest req,
+                                        jakarta.servlet.http.HttpServletResponse res,
+                                        jakarta.servlet.FilterChain chain) throws jakarta.servlet.ServletException, java.io.IOException {
+            var auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+            if (auth instanceof JwtAuthenticationToken token) {
+                User user = null;
+                try {
+                    user = userRepository.findById(Long.valueOf(token.getName())).orElse(null);
+                } catch (NumberFormatException ignored) {
+                    // sub が数値でない = 不正なトークン
+                }
+                boolean valid = user != null && "ACTIVE".equals(user.getStatus());
+                if (valid && user.getPasswordChangedAt() != null && token.getToken().getIssuedAt() != null) {
+                    java.time.Instant changed = user.getPasswordChangedAt().atZone(AppTime.ZONE).toInstant()
+                            .truncatedTo(java.time.temporal.ChronoUnit.SECONDS);
+                    valid = !token.getToken().getIssuedAt().isBefore(changed);   // パスワード変更前に発行されたトークンは無効
+                }
+                if (!valid) {
+                    org.springframework.security.core.context.SecurityContextHolder.clearContext();
+                    writeError(res, 401, "E-001", "認証が必要です。再度ログインしてください。");
+                    return;
+                }
+            }
+            chain.doFilter(req, res);
+        }
     }
 
     /** mcp=true（要パスワード変更）のトークンで、パスワード変更以外の API を呼ぶと 403 を返す。 */
