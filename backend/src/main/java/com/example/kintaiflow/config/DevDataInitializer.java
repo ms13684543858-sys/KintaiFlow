@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -23,6 +24,7 @@ import java.util.Map;
  * 本番環境では使用しない（seed-password を設定しなければ動かない）。
  */
 @Component
+@Order(1)
 public class DevDataInitializer implements CommandLineRunner {
 
     private static final Logger log = LoggerFactory.getLogger(DevDataInitializer.class);

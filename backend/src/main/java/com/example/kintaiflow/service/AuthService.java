@@ -98,7 +98,7 @@ public class AuthService {
     }
 
     /** パスワードポリシー（KF-RD-002 §4）。問題が無ければ null、あればメッセージを返す。 */
-    static String validatePolicy(String newPassword, String currentPassword) {
+    public static String validatePolicy(String newPassword, String currentPassword) {
         if (newPassword.length() < MIN_PASSWORD_LENGTH) {
             return "新しいパスワードは" + MIN_PASSWORD_LENGTH + "文字以上で入力してください。";
         }

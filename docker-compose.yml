@@ -32,6 +32,9 @@ services:
       KINTAIFLOW_JWT_SECRET: ${JWT_SECRET:?JWT_SECRET を .env に設定してください}
       # 開発用ダミーユーザーを入れたい時だけ設定する。本番では空にする。
       KINTAIFLOW_DEV_SEED_PASSWORD: ${DEV_SEED_PASSWORD:-}
+      # 本番の初回起動：ユーザーが0件のときだけ、この管理者を1名作る（初回ログイン時にパスワード変更を要求）
+      KINTAIFLOW_BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
+      KINTAIFLOW_BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
     healthcheck:
       test: ["CMD-SHELL", "curl -fsS http://localhost:8080/actuator/health || exit 1"]
       interval: 10s
