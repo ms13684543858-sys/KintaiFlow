@@ -20,7 +20,8 @@ export const dowOf = (s) => '日月火水木金土'[new Date(String(s).substring
 export const ymOf = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 export const dateOf = (d) => `${ymOf(d)}-${String(d.getDate()).padStart(2, '0')}`
 
-export const REQUEST_TYPE = { LEAVE: '休暇申請', CLOCK_CORRECTION: '打刻修正申請' }
+export const REQUEST_TYPE = { LEAVE: '休暇申請', CLOCK_CORRECTION: '打刻修正申請', BREAK_CORRECTION: '休憩・離席修正申請' }
+export const BREAK_KIND = { BREAK: '休憩', AWAY: '離席' }
 export const UNIT = { FULL: '1日', AM: '午前半休', PM: '午後半休' }
 export const ROLE = { EMPLOYEE: '社員', MANAGER: '上長', ADMIN: '管理者' }
 export const USER_STATUS = { ACTIVE: '在籍', INACTIVE: '無効' }
@@ -39,7 +40,8 @@ export const STEP_STATUS = {
   WAITING: { label: '承認待ち', tone: 'blue' },
   APPROVED: { label: '承認', tone: 'green' },
   RETURNED: { label: '差戻し', tone: 'orange' },
-  REJECTED: { label: '却下', tone: 'red' }
+  REJECTED: { label: '却下', tone: 'red' },
+  SKIPPED: { label: '処理なし', tone: 'gray' } // 取下げ・差戻し・却下で打ち切られ、処理されなかった段
 }
 
 /** 申請の期間表示（同日なら1日だけ） */

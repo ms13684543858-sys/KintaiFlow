@@ -14,9 +14,12 @@ const leaveTypeId = ref('')
 const unit = ref('FULL')
 const startDate = ref('')
 const endDate = ref('')
-const targetDate = ref('')
+const targetDate = ref(today) // 対象日の初期値は当日
 const correctedClockIn = ref('')
 const correctedClockOut = ref('')
+const breakKind = ref('BREAK')
+const breakStart = ref('')
+const breakEnd = ref('')
 const reason = ref('')
 
 const leaveTypes = ref([])
@@ -59,9 +62,18 @@ async function submit(asDraft) {
       requestType: 'LEAVE', leaveTypeId: Number(leaveTypeId.value), unit: unit.value,
       startDate: startDate.value, endDate: end, reason: reason.value.trim() || null, asDraft
     }
+  } else if (requestType.value === 'BREAK_CORRECTION') {
+    if (!targetDate.value) { error.value = '対象日を入力してください。'; return }
+    if (!breakStart.value || !breakEnd.value) { error.value = '開始時刻と終了時刻の両方を入力してください。'; return }
+    if (!reason.value.trim()) { error.value = '理由を入力してください。'; return }
+    body = {
+      requestType: 'BREAK_CORRECTION', startDate: targetDate.value, endDate: targetDate.value,
+      breakKind: breakKind.value, breakStart: breakStart.value, breakEnd: breakEnd.value,
+      reason: reason.value.trim(), asDraft
+    }
   } else {
     if (!targetDate.value) { error.value = '対象日を入力してください。'; return }
-    if (!correctedClockIn.value && !correctedClockOut.value) { error.value = '修正後の出勤時刻または退勤時刻を入力してください。'; return }
+    if (!correctedClockIn.value || !correctedClockOut.value) { error.value = '修正後の出勤時刻と退勤時刻の両方を入力してください。'; return }
     if (!reason.value.trim()) { error.value = '理由を入力してください。'; return }
     body = {
       requestType: 'CLOCK_CORRECTION', startDate: targetDate.value, endDate: targetDate.value,
@@ -92,6 +104,7 @@ async function submit(asDraft) {
           <select v-model="requestType">
             <option value="LEAVE">休暇申請</option>
             <option value="CLOCK_CORRECTION">打刻修正申請</option>
+            <option value="BREAK_CORRECTION">休憩・離席修正申請</option>
           </select>
         </label>
 
@@ -127,23 +140,48 @@ async function submit(asDraft) {
           </p>
         </template>
 
+        <template v-else-if="requestType === 'BREAK_CORRECTION'">
+          <label class="field wide">
+            対象日<span class="req">必須</span>
+            <input v-model="targetDate" type="date" :max="today" />
+          </label>
+          <label class="field">
+            種別<span class="req">必須</span>
+            <select v-model="breakKind">
+              <option value="BREAK">休憩（昼休みなど）</option>
+              <option value="AWAY">日中離席</option>
+            </select>
+          </label>
+          <label class="field">
+            開始<span class="req">必須</span>
+            <input v-model="breakStart" type="time" />
+          </label>
+          <label class="field">
+            終了<span class="req">必須</span>
+            <input v-model="breakEnd" type="time" />
+          </label>
+          <p class="alert alert-info wide">
+            「休憩終了」を押し忘れた場合も、ここで開始と終了の時刻を入れて申請してください。承認されると打刻に反映され、勤務時間が再計算されます（上長 → 管理者の2段階承認）。
+          </p>
+        </template>
+
         <template v-else>
           <label class="field wide">
             対象日<span class="req">必須</span>
             <input v-model="targetDate" type="date" :max="today" />
           </label>
           <label class="field">
-            修正後 出勤
+            修正後 出勤<span class="req">必須</span>
             <input v-model="correctedClockIn" type="time" />
           </label>
           <label class="field">
-            修正後 退勤
+            修正後 退勤<span class="req">必須</span>
             <input v-model="correctedClockOut" type="time" />
           </label>
         </template>
 
         <label class="field wide">
-          <span>理由<span v-if="requestType === 'CLOCK_CORRECTION'" class="req">必須</span></span>
+          <span>理由<span v-if="requestType !== 'LEAVE'" class="req">必須</span></span>
           <textarea v-model="reason" rows="3" maxlength="200" />
           <span class="hint">200文字以内</span>
         </label>

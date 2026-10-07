@@ -41,6 +41,15 @@ public class Request {
     @Column(name = "corrected_clock_out")
     private LocalDateTime correctedClockOut;
 
+    @Column(name = "corrected_break_kind")
+    private String correctedBreakKind;
+
+    @Column(name = "corrected_break_start")
+    private LocalDateTime correctedBreakStart;
+
+    @Column(name = "corrected_break_end")
+    private LocalDateTime correctedBreakEnd;
+
     @Column(name = "reason")
     private String reason;
 
@@ -79,6 +88,12 @@ public class Request {
     public void setCorrectedClockIn(LocalDateTime correctedClockIn) { this.correctedClockIn = correctedClockIn; }
     public LocalDateTime getCorrectedClockOut() { return correctedClockOut; }
     public void setCorrectedClockOut(LocalDateTime correctedClockOut) { this.correctedClockOut = correctedClockOut; }
+    public String getCorrectedBreakKind() { return correctedBreakKind; }
+    public void setCorrectedBreakKind(String correctedBreakKind) { this.correctedBreakKind = correctedBreakKind; }
+    public LocalDateTime getCorrectedBreakStart() { return correctedBreakStart; }
+    public void setCorrectedBreakStart(LocalDateTime correctedBreakStart) { this.correctedBreakStart = correctedBreakStart; }
+    public LocalDateTime getCorrectedBreakEnd() { return correctedBreakEnd; }
+    public void setCorrectedBreakEnd(LocalDateTime correctedBreakEnd) { this.correctedBreakEnd = correctedBreakEnd; }
     public String getReason() { return reason; }
     public void setReason(String reason) { this.reason = reason; }
     public String getStatus() { return status; }

@@ -21,8 +21,9 @@ import static org.mockito.Mockito.*;
 class AttendanceServiceTest {
 
     private final AttendanceRecordRepository repo = mock(AttendanceRecordRepository.class);
+    private final com.example.kintaiflow.repository.AttendanceBreakRepository breakRepo = mock(com.example.kintaiflow.repository.AttendanceBreakRepository.class);
     private final Clock clock = Clock.fixed(Instant.parse("2026-10-03T00:00:00Z"), AppTime.ZONE);
-    private final AttendanceService service = new AttendanceService(repo, new AttendanceCalculator(), clock);
+    private final AttendanceService service = new AttendanceService(repo, breakRepo, new AttendanceCalculator(), clock);
     private final LocalDate today = LocalDate.of(2026, 10, 3);
 
     private void stubSave() {
@@ -90,5 +91,56 @@ class AttendanceServiceTest {
         var res = service.getMonthly(1L, "2026-10");
         assertEquals(0, res.totalWorkMinutes());
         assertTrue(res.records().isEmpty());
+    }
+
+    // ---- 休憩・日中離席 ----
+
+    private AttendanceRecord workingRecord() throws Exception {
+        var rec = new AttendanceRecord(1L, today);
+        rec.setClockIn(LocalDateTime.of(2026, 10, 3, 0, 0));
+        var f = AttendanceRecord.class.getDeclaredField("id");
+        f.setAccessible(true);
+        f.set(rec, 10L);
+        when(repo.findWithLockByUserIdAndWorkDate(1L, today)).thenReturn(Optional.of(rec));
+        return rec;
+    }
+
+    @Test
+    void startBreak_ok() throws Exception {
+        workingRecord();
+        when(breakRepo.findFirstByAttendanceRecordIdAndEndAtIsNull(10L)).thenReturn(Optional.empty());
+        when(breakRepo.saveAndFlush(any())).thenAnswer(i -> i.getArgument(0));
+        service.startBreak(1L, "BREAK");
+        verify(breakRepo).saveAndFlush(any());
+    }
+
+    @Test
+    void startBreak_whileOpen_isConflict() throws Exception {
+        workingRecord();
+        var open = new com.example.kintaiflow.entity.AttendanceBreak(10L, "AWAY", LocalDateTime.of(2026, 10, 3, 8, 0));
+        when(breakRepo.findFirstByAttendanceRecordIdAndEndAtIsNull(10L)).thenReturn(Optional.of(open));
+        assertEquals("E-020", assertThrows(BusinessException.class, () -> service.startBreak(1L, "BREAK")).getCode());
+    }
+
+    @Test
+    void startBreak_withoutClockIn() {
+        when(repo.findWithLockByUserIdAndWorkDate(1L, today)).thenReturn(Optional.empty());
+        assertEquals("E-007", assertThrows(BusinessException.class, () -> service.startBreak(1L, "BREAK")).getCode());
+    }
+
+    @Test
+    void endBreak_notOpen() throws Exception {
+        workingRecord();
+        when(breakRepo.findFirstByAttendanceRecordIdAndEndAtIsNull(10L)).thenReturn(Optional.empty());
+        assertEquals("E-021", assertThrows(BusinessException.class, () -> service.endBreak(1L)).getCode());
+    }
+
+    @Test
+    void clockOut_whileBreaking_isRejected() throws Exception {
+        workingRecord();
+        var open = new com.example.kintaiflow.entity.AttendanceBreak(10L, "BREAK", LocalDateTime.of(2026, 10, 3, 8, 0));
+        when(breakRepo.findFirstByAttendanceRecordIdAndEndAtIsNull(10L)).thenReturn(Optional.of(open));
+        assertEquals("E-022", assertThrows(BusinessException.class, () -> service.clockOut(1L)).getCode());
+        verify(repo, never()).saveAndFlush(any());
     }
 }

@@ -9,7 +9,7 @@ import java.time.LocalDate;
 /** ONL-005 申請作成のリクエスト。申請者IDは含めない（常にトークンから決定）。 */
 public record CreateRequestRequest(
         @NotBlank(message = "申請種別は必須入力です。")
-        @Pattern(regexp = "LEAVE|CLOCK_CORRECTION", message = "申請種別が正しくありません。")
+        @Pattern(regexp = "LEAVE|CLOCK_CORRECTION|BREAK_CORRECTION", message = "申請種別が正しくありません。")
         String requestType,
         Long leaveTypeId,
         LocalDate startDate,
@@ -20,6 +20,12 @@ public record CreateRequestRequest(
         String correctedClockIn,
         @Pattern(regexp = "^([01]\\d|2[0-3]):[0-5]\\d$", message = "修正後の退勤時刻の形式が正しくありません。")
         String correctedClockOut,
+        @Pattern(regexp = "BREAK|AWAY", message = "休憩・離席の種別が正しくありません。")
+        String breakKind,
+        @Pattern(regexp = "^([01]\\d|2[0-3]):[0-5]\\d$", message = "休憩・離席の開始時刻の形式が正しくありません。")
+        String breakStart,
+        @Pattern(regexp = "^([01]\\d|2[0-3]):[0-5]\\d$", message = "休憩・離席の終了時刻の形式が正しくありません。")
+        String breakEnd,
         @Size(max = 200, message = "理由は200文字以内で入力してください。")
         String reason,
         Boolean asDraft) {

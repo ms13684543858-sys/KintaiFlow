@@ -20,7 +20,14 @@ const currentYm = ymOf(new Date())
 
 const todayRecord = computed(() => records.value.find(r => r.workDate === dateOf(new Date())))
 const canClockIn = computed(() => month.value === currentYm && !todayRecord.value?.clockIn)
-const canClockOut = computed(() => month.value === currentYm && todayRecord.value?.clockIn && !todayRecord.value?.clockOut)
+const working = computed(() => month.value === currentYm && todayRecord.value?.clockIn && !todayRecord.value?.clockOut)
+// 休憩中／離席中の区間（終了していないもの）
+const openBreak = computed(() => (todayRecord.value?.breaks || []).find(b => !b.endAt) || null)
+const canClockOut = computed(() => working.value && !openBreak.value)
+const canBreak = computed(() => working.value && (!openBreak.value || openBreak.value.kind === 'BREAK'))
+const canAway = computed(() => working.value && (!openBreak.value || openBreak.value.kind === 'AWAY'))
+const KIND = { BREAK: '休憩', AWAY: '離席' }
+const spanText = (b) => `${KIND[b.kind]} ${hm(b.startAt)}–${b.endAt ? hm(b.endAt) : '継続中'}`
 
 const clockText = computed(() => now.value.toLocaleTimeString('ja-JP', { hour12: false }))
 const dateText = computed(() => now.value.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' }))
@@ -49,6 +56,21 @@ async function stamp(kind) {
   } catch (e) { error.value = e.message } finally { busy.value = false }
 }
 
+// 休憩・離席の開始／終了。開始済みなら同じボタンで終了になる
+async function toggleBreak(kind) {
+  busy.value = true; message.value = ''; error.value = ''
+  try {
+    if (openBreak.value) {
+      await api('POST', '/api/attendance/break-end')
+      message.value = `${KIND[kind]}を終了しました。`
+    } else {
+      await api('POST', '/api/attendance/break-start', { kind })
+      message.value = `${KIND[kind]}を開始しました。終わったら「${KIND[kind]}終了」を押してください。`
+    }
+    await load()
+  } catch (e) { error.value = e.message } finally { busy.value = false }
+}
+
 function shift(delta) {
   const [y, m] = month.value.split('-').map(Number)
   const d = new Date(y, m - 1 + delta, 1)
@@ -72,12 +94,24 @@ onBeforeUnmount(() => clearInterval(timer))
         <button class="btn big" :disabled="busy || !canClockIn" @click="stamp('clock-in')">出勤</button>
         <button class="btn big out" :disabled="busy || !canClockOut" @click="stamp('clock-out')">退勤</button>
       </div>
+      <div class="actions sub">
+        <button class="btn btn-ghost" :disabled="busy || !canBreak" @click="toggleBreak('BREAK')">
+          {{ openBreak?.kind === 'BREAK' ? '休憩終了' : '休憩開始' }}
+        </button>
+        <button class="btn btn-ghost" :disabled="busy || !canAway" @click="toggleBreak('AWAY')">
+          {{ openBreak?.kind === 'AWAY' ? '離席終了' : '離席開始' }}
+        </button>
+      </div>
+      <p v-if="openBreak" class="alert alert-ok" role="status">
+        {{ KIND[openBreak.kind] }}中です（{{ hm(openBreak.startAt) }}〜）。終了するまで退勤できません。
+      </p>
       <p class="today">
         本日：出勤 {{ hm(todayRecord?.clockIn) }}　退勤 {{ hm(todayRecord?.clockOut) }}
       </p>
+      <p v-if="todayRecord?.breaks?.length" class="spans">{{ todayRecord.breaks.map(spanText).join('　') }}</p>
       <p v-if="message" class="alert alert-ok" role="status">{{ message }}</p>
       <p v-if="error" class="alert alert-error" role="alert">{{ error }}</p>
-      <p class="hint">記録される時刻はサーバーの時刻（日本時間）です。打刻の訂正は「打刻修正申請」から行います。</p>
+      <p class="hint">記録される時刻はサーバーの時刻（日本時間）です。休憩を打刻しない日は、法定休憩（6時間超45分・8時間超60分）を自動で差し引きます。離席は勤務時間から差し引きます。打刻の訂正は「打刻修正申請」から行います。</p>
     </section>
 
     <section class="card">
@@ -87,16 +121,17 @@ onBeforeUnmount(() => clearInterval(timer))
         <button class="btn btn-ghost" :disabled="month >= currentYm" @click="shift(1)">翌月 ›</button>
       </div>
       <table>
-        <thead><tr><th>日付</th><th>出勤</th><th>退勤</th><th>勤務時間</th><th>残業</th></tr></thead>
+        <thead><tr><th>日付</th><th>出勤</th><th>退勤</th><th>休憩・離席</th><th>勤務時間</th><th>残業</th></tr></thead>
         <tbody>
           <tr v-for="r in records" :key="r.workDate">
             <td>{{ r.workDate.substring(5).replace('-', '/') }}（{{ dow(r.workDate) }}）</td>
             <td>{{ hm(r.clockIn) }}</td><td>{{ hm(r.clockOut) }}</td>
+            <td class="spans-cell">{{ (r.breaks || []).map(spanText).join(' / ') || '—' }}</td>
             <td>{{ dur(r.workMinutes) }}</td><td>{{ dur(r.overtimeMinutes) }}</td>
           </tr>
-          <tr v-if="!records.length"><td colspan="5" class="empty">この月の打刻はありません。</td></tr>
+          <tr v-if="!records.length"><td colspan="6" class="empty">この月の打刻はありません。</td></tr>
         </tbody>
-        <tfoot><tr><th colspan="3">月合計</th><th>{{ dur(totals.work) }}</th><th>{{ dur(totals.overtime) }}</th></tr></tfoot>
+        <tfoot><tr><th colspan="4">月合計</th><th>{{ dur(totals.work) }}</th><th>{{ dur(totals.overtime) }}</th></tr></tfoot>
       </table>
     </section>
   </AppLayout>
@@ -110,9 +145,12 @@ onBeforeUnmount(() => clearInterval(timer))
 .who { margin: 0 0 16px; color: var(--muted); }
 .actions { display: flex; gap: 16px; justify-content: center; }
 .big { min-width: 160px; padding: 16px 0; font-size: 20px; }
-.out { background: #b45309; }
+.out:not(:disabled) { background: #b45309; }
 .out:hover:not(:disabled) { background: #92400e; }
+.actions.sub { margin-top: 12px; }
 .today { margin: 16px 0 8px; font-weight: 600; }
+.spans { margin: 0 0 8px; color: var(--muted); font-size: 13px; }
+.spans-cell { color: var(--muted); font-size: 13px; }
 .stamp .alert { margin: 8px auto; max-width: 480px; }
 .head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }

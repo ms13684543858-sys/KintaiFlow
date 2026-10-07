@@ -18,13 +18,41 @@ public class AttendanceCalculator {
 
     public record WorkTime(int workMinutes, int overtimeMinutes) {}
 
+    /** 休憩・離席の1区間（kind は BREAK / AWAY。end が null の区間は計算対象外）。 */
+    public record Span(String kind, LocalDateTime start, LocalDateTime end) {}
+
     public WorkTime calculate(LocalDateTime clockIn, LocalDateTime clockOut) {
-        long gross = Duration.between(
-                clockIn.truncatedTo(ChronoUnit.MINUTES),
-                clockOut.truncatedTo(ChronoUnit.MINUTES)).toMinutes();
+        return calculate(clockIn, clockOut, java.util.List.of());
+    }
+
+    /**
+     * 休憩・離席の打刻を反映した勤務時間。
+     * ・日中離席（AWAY）は全て控除する。
+     * ・休憩（BREAK）は、打刻した合計を控除する。休憩の打刻が無い日は法定休憩（労基法34条：6時間超45分・8時間超60分）を自動控除する。
+     * ・各区間は出勤〜退勤の範囲に切り詰めて数える。
+     */
+    public WorkTime calculate(LocalDateTime clockIn, LocalDateTime clockOut, java.util.List<Span> spans) {
+        LocalDateTime in = clockIn.truncatedTo(ChronoUnit.MINUTES);
+        LocalDateTime out = clockOut.truncatedTo(ChronoUnit.MINUTES);
+        long gross = Duration.between(in, out).toMinutes();
         if (gross < 0) gross = 0;
-        int breakMinutes = gross > THRESHOLD_8H ? BREAK_OVER_8H : (gross > THRESHOLD_6H ? BREAK_OVER_6H : 0);
-        int work = (int) (gross - breakMinutes);
+        long recordedBreak = 0;
+        long away = 0;
+        for (Span sp : spans) {
+            if (sp.end() == null) continue;
+            LocalDateTime s = sp.start().truncatedTo(ChronoUnit.MINUTES);
+            LocalDateTime e = sp.end().truncatedTo(ChronoUnit.MINUTES);
+            if (s.isBefore(in)) s = in;
+            if (e.isAfter(out)) e = out;
+            long m = Duration.between(s, e).toMinutes();
+            if (m <= 0) continue;
+            if ("AWAY".equals(sp.kind())) away += m; else recordedBreak += m;
+        }
+        long net = gross - away;
+        int statutory = net > THRESHOLD_8H ? BREAK_OVER_8H : (net > THRESHOLD_6H ? BREAK_OVER_6H : 0);
+        // 休憩を1回でも打刻した日は打刻どおり控除する。打刻が無い日だけ法定休憩を自動控除する。
+        long breakMinutes = recordedBreak > 0 ? recordedBreak : statutory;
+        int work = (int) Math.max(0, net - breakMinutes);
         int overtime = Math.max(0, work - STANDARD_MINUTES);
         return new WorkTime(work, overtime);
     }

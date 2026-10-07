@@ -7,7 +7,7 @@ import AppLayout from '../components/AppLayout.vue'
 import StatusBadge from '../components/StatusBadge.vue'
 import ConfirmDialog from '../components/ConfirmDialog.vue'
 import { api, auth } from '../api/client'
-import { fmtPeriod, fmtDays, fmtDateTime, REQUEST_TYPE, UNIT, STEP_STATUS } from '../utils/format'
+import { fmtPeriod, fmtDays, fmtDateTime, REQUEST_TYPE, BREAK_KIND, UNIT, STEP_STATUS } from '../utils/format'
 
 const route = useRoute()
 const id = computed(() => route.params.id)
@@ -118,6 +118,12 @@ onMounted(load)
             <template v-if="detail.applicantBalance != null">
               <dt>申請者の残日数</dt><dd>{{ fmtDays(detail.applicantBalance) }}</dd>
             </template>
+          </template>
+          <template v-else-if="req.requestType === 'BREAK_CORRECTION'">
+            <dt>対象日</dt><dd>{{ fmtPeriod(req.startDate, req.startDate) }}</dd>
+            <dt>種別</dt><dd>{{ BREAK_KIND[req.breakKind] ?? req.breakKind }}</dd>
+            <dt>修正後 開始</dt><dd>{{ req.breakStart ?? '—' }}</dd>
+            <dt>修正後 終了</dt><dd>{{ req.breakEnd ?? '—' }}</dd>
           </template>
           <template v-else>
             <dt>対象日</dt><dd>{{ fmtPeriod(req.startDate, req.startDate) }}</dd>

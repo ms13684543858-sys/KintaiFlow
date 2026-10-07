@@ -47,7 +47,9 @@ public class ApprovalService {
     private final RequestRepository requestRepository;
     private final UserRepository userRepository;
     private final AttendanceRecordRepository attendanceRecordRepository;
+    private final com.example.kintaiflow.repository.AttendanceBreakRepository attendanceBreakRepository;
     private final AttendanceCalculator attendanceCalculator;
+    private final AttendanceService attendanceService;
     private final LeaveBalanceService leaveBalanceService;
     private final ApprovalRouteService approvalRouteService;
     private final NotificationService notificationService;
@@ -57,7 +59,9 @@ public class ApprovalService {
                            RequestRepository requestRepository,
                            UserRepository userRepository,
                            AttendanceRecordRepository attendanceRecordRepository,
+                           com.example.kintaiflow.repository.AttendanceBreakRepository attendanceBreakRepository,
                            AttendanceCalculator attendanceCalculator,
+                           AttendanceService attendanceService,
                            LeaveBalanceService leaveBalanceService,
                            ApprovalRouteService approvalRouteService,
                            NotificationService notificationService,
@@ -66,7 +70,9 @@ public class ApprovalService {
         this.requestRepository = requestRepository;
         this.userRepository = userRepository;
         this.attendanceRecordRepository = attendanceRecordRepository;
+        this.attendanceBreakRepository = attendanceBreakRepository;
         this.attendanceCalculator = attendanceCalculator;
+        this.attendanceService = attendanceService;
         this.leaveBalanceService = leaveBalanceService;
         this.approvalRouteService = approvalRouteService;
         this.notificationService = notificationService;
@@ -82,7 +88,7 @@ public class ApprovalService {
     @Transactional(readOnly = true)
     public PendingApprovalListResponse listPending(Long userId, String requestType, Integer stepNo) {
         User actor = requireApprover(userId);
-        if (requestType != null && !List.of(RequestType.LEAVE, RequestType.CLOCK_CORRECTION).contains(requestType)) {
+        if (requestType != null && !List.of(RequestType.LEAVE, RequestType.CLOCK_CORRECTION, RequestType.BREAK_CORRECTION).contains(requestType)) {
             throw invalidInput();
         }
         if (stepNo != null && stepNo != 1 && stepNo != 2) {
@@ -96,7 +102,7 @@ public class ApprovalService {
             return new PendingApprovalListResponse(List.of());
         }
         List<String> types = (requestType == null)
-                ? List.of(RequestType.LEAVE, RequestType.CLOCK_CORRECTION) : List.of(requestType);
+                ? List.of(RequestType.LEAVE, RequestType.CLOCK_CORRECTION, RequestType.BREAK_CORRECTION) : List.of(requestType);
         List<PendingApprovalRow> rows = approvalStepRepository.findPending(userId, admin, types, stepNos);
         return new PendingApprovalListResponse(rows.stream().map(ApprovalService::toItem).toList());
     }
@@ -233,6 +239,9 @@ public class ApprovalService {
             leaveBalanceService.consume(req.getUserId(), req.getLeaveTypeId(), req.getDays(), req.getStartDate());
         } else if (RequestType.CLOCK_CORRECTION.equals(req.getRequestType())) {
             applyClockCorrection(req);
+        } else if (RequestType.BREAK_CORRECTION.equals(req.getRequestType())) {
+            attendanceService.applyBreakCorrection(req.getUserId(), req.getStartDate(), req.getCorrectedBreakKind(),
+                    req.getCorrectedBreakStart(), req.getCorrectedBreakEnd());
         }
     }
 
@@ -247,7 +256,12 @@ public class ApprovalService {
                 .orElseGet(() -> new AttendanceRecord(req.getUserId(), workDate));
         rec.setClockIn(req.getCorrectedClockIn());
         rec.setClockOut(req.getCorrectedClockOut());
-        AttendanceCalculator.WorkTime wt = attendanceCalculator.calculate(rec.getClockIn(), rec.getClockOut());
+        rec = attendanceRecordRepository.saveAndFlush(rec);
+        // その日に休憩・離席の打刻があれば、修正後の出退勤時刻の範囲で再計算に反映する
+        java.util.List<AttendanceCalculator.Span> spans = attendanceBreakRepository
+                .findByAttendanceRecordIdOrderByStartAtAsc(rec.getId()).stream()
+                .map(b -> new AttendanceCalculator.Span(b.getKind(), b.getStartAt(), b.getEndAt())).toList();
+        AttendanceCalculator.WorkTime wt = attendanceCalculator.calculate(rec.getClockIn(), rec.getClockOut(), spans);
         rec.setWorkMinutes(wt.workMinutes());
         rec.setOvertimeMinutes(wt.overtimeMinutes());
         attendanceRecordRepository.save(rec);
@@ -280,6 +294,9 @@ public class ApprovalService {
             String period = req.getStartDate().equals(req.getEndDate()) ? req.getStartDate().toString()
                     : req.getStartDate() + "〜" + req.getEndDate();
             return "休暇申請（" + period + "）";
+        }
+        if (RequestType.BREAK_CORRECTION.equals(req.getRequestType())) {
+            return "休憩・離席修正申請（対象日 " + req.getStartDate() + "）";
         }
         return "打刻修正申請（対象日 " + req.getStartDate() + "）";
     }

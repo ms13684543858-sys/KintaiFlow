@@ -4,6 +4,7 @@ package com.example.kintaiflow.entity;
 public final class RequestType {
     public static final String LEAVE = "LEAVE";
     public static final String CLOCK_CORRECTION = "CLOCK_CORRECTION";
+    public static final String BREAK_CORRECTION = "BREAK_CORRECTION";   // 休憩・離席の修正申請
 
     private RequestType() {}
 }

@@ -2,6 +2,7 @@ package com.example.kintaiflow.controller;
 
 import com.example.kintaiflow.dto.*;
 import com.example.kintaiflow.service.AttendanceService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -26,6 +27,19 @@ public class AttendanceController {
     @PostMapping("/clock-out")
     public ClockOutResponse clockOut(Authentication auth) {
         return attendanceService.clockOut(Long.valueOf(auth.getName()));
+    }
+
+    /** 休憩・日中離席の開始（kind=BREAK|AWAY）。 */
+    @PostMapping("/break-start")
+    @ResponseStatus(HttpStatus.CREATED)
+    public BreakResponse breakStart(@Valid @RequestBody BreakStartRequest request, Authentication auth) {
+        return attendanceService.startBreak(Long.valueOf(auth.getName()), request.kind());
+    }
+
+    /** 継続中の休憩・日中離席の終了。 */
+    @PostMapping("/break-end")
+    public BreakResponse breakEnd(Authentication auth) {
+        return attendanceService.endBreak(Long.valueOf(auth.getName()));
     }
 
     @GetMapping

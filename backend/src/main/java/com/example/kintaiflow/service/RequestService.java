@@ -54,6 +54,7 @@ public class RequestService {
     private final LeaveBalanceService leaveBalanceService;
     private final NotificationService notificationService;
     private final ApprovalRouteService approvalRouteService;
+    private final AttendanceService attendanceService;
     private final Clock clock;
 
     public RequestService(RequestRepository requestRepository,
@@ -65,6 +66,7 @@ public class RequestService {
                           LeaveBalanceService leaveBalanceService,
                           NotificationService notificationService,
                           ApprovalRouteService approvalRouteService,
+                          AttendanceService attendanceService,
                           Clock clock) {
         this.requestRepository = requestRepository;
         this.approvalStepRepository = approvalStepRepository;
@@ -75,6 +77,7 @@ public class RequestService {
         this.leaveBalanceService = leaveBalanceService;
         this.notificationService = notificationService;
         this.approvalRouteService = approvalRouteService;
+        this.attendanceService = attendanceService;
         this.clock = clock;
     }
 
@@ -86,6 +89,8 @@ public class RequestService {
         LocalDateTime now = LocalDateTime.now(clock).truncatedTo(ChronoUnit.SECONDS);
         boolean draft = Boolean.TRUE.equals(req.asDraft());
         boolean leave = RequestType.LEAVE.equals(req.requestType());
+        boolean clockCorrection = RequestType.CLOCK_CORRECTION.equals(req.requestType());
+        boolean breakCorrection = RequestType.BREAK_CORRECTION.equals(req.requestType());
 
         validateInput(req, today, draft);                                    // ② E-002 / E-003
         User user = userRepository.findByIdForUpdate(userId)                 // ③ 行ロック
@@ -107,6 +112,10 @@ public class RequestService {
             }
         }
         if (!draft) {                                                        // ⑥⑦ 提出時のみ
+            if (breakCorrection) {
+                attendanceService.validateBreakCorrection(userId, req.startDate(), req.breakKind(),
+                        req.startDate().atTime(LocalTime.parse(req.breakStart())), req.startDate().atTime(LocalTime.parse(req.breakEnd())));
+            }
             checkSubmittable(userId, req.requestType(), leaveType, days, req.startDate(), endDate, req.unit(), today);
         }
         Request r = new Request();                                           // ⑧
@@ -117,8 +126,13 @@ public class RequestService {
         r.setLeaveTypeId(leave ? req.leaveTypeId() : null);
         r.setUnit(leave ? req.unit() : null);
         r.setDays(days);
-        r.setCorrectedClockIn(leave ? null : req.startDate().atTime(LocalTime.parse(req.correctedClockIn())));
-        r.setCorrectedClockOut(leave ? null : req.startDate().atTime(LocalTime.parse(req.correctedClockOut())));
+        r.setCorrectedClockIn(clockCorrection ? req.startDate().atTime(LocalTime.parse(req.correctedClockIn())) : null);
+        r.setCorrectedClockOut(clockCorrection ? req.startDate().atTime(LocalTime.parse(req.correctedClockOut())) : null);
+        if (breakCorrection) {
+            r.setCorrectedBreakKind(req.breakKind());
+            r.setCorrectedBreakStart(req.startDate().atTime(LocalTime.parse(req.breakStart())));
+            r.setCorrectedBreakEnd(req.startDate().atTime(LocalTime.parse(req.breakEnd())));
+        }
         r.setReason(blankToNull(req.reason()));
         r.setStatus(draft ? RequestStatus.DRAFT : RequestStatus.PENDING);
         r.setCurrentStep(draft ? 0 : 1);
@@ -139,7 +153,7 @@ public class RequestService {
             checkLeaveBalance(userId, leaveType, days, today);               // ⑥ E-004
             checkOverlap(userId, start, end, unit);                          // ⑦ E-005
         } else if (requestRepository.existsByUserIdAndRequestTypeAndStartDateAndStatus(
-                userId, RequestType.CLOCK_CORRECTION, start, RequestStatus.PENDING)) {
+                userId, requestType, start, RequestStatus.PENDING)) {
             throw new BusinessException("E-005", "同一期間に既に申請があります。", HttpStatus.CONFLICT);
         }
     }
@@ -161,6 +175,19 @@ public class RequestService {
             }
             if (!LeaveUnit.FULL.equals(req.unit()) && !req.startDate().equals(req.endDate())) {
                 throw badInput("半休は開始日と終了日に同じ日付を指定してください。");
+            }
+        } else if (RequestType.BREAK_CORRECTION.equals(req.requestType())) {
+            if (req.breakKind() == null) throw badInput("休憩・離席の種別は必須入力です。");
+            if (req.breakStart() == null) throw badInput("開始時刻は必須入力です。");
+            if (req.breakEnd() == null) throw badInput("終了時刻は必須入力です。");
+            if (req.startDate().isAfter(today)) {
+                throw new BusinessException("E-003", "対象日は本日以前の日付を指定してください。", HttpStatus.BAD_REQUEST);
+            }
+            if (!LocalTime.parse(req.breakEnd()).isAfter(LocalTime.parse(req.breakStart()))) {
+                throw new BusinessException("E-003", "終了時刻は開始時刻より後の時刻を指定してください。", HttpStatus.BAD_REQUEST);
+            }
+            if (!draft && (req.reason() == null || req.reason().isBlank())) {
+                throw badInput("理由は必須入力です。");
             }
         } else {
             if (req.correctedClockIn() == null) throw badInput("修正後の出勤時刻は必須入力です。");
@@ -232,7 +259,8 @@ public class RequestService {
             return applicant.getName() + "さんから休暇申請（" + (type == null ? "" : type.getName()) + " "
                     + r.getStartDate() + "〜" + r.getEndDate() + "）が提出されました。";
         }
-        return applicant.getName() + "さんから打刻修正申請（対象日 " + r.getStartDate() + "）が提出されました。";
+        String kindName = RequestType.BREAK_CORRECTION.equals(r.getRequestType()) ? "休憩・離席修正申請" : "打刻修正申請";
+        return applicant.getName() + "さんから" + kindName + "（対象日 " + r.getStartDate() + "）が提出されました。";
     }
 
     // ------------------------------------------------------------------ ONL-006
@@ -302,8 +330,20 @@ public class RequestService {
                 r.getLeaveTypeId(), type == null ? null : type.getName(),
                 r.getStartDate(), r.getEndDate(), r.getUnit(), r.getDays(),
                 formatTime(r.getCorrectedClockIn()), formatTime(r.getCorrectedClockOut()),
+                r.getCorrectedBreakKind(), formatTime(r.getCorrectedBreakStart()), formatTime(r.getCorrectedBreakEnd()),
                 r.getReason(), r.getStatus(), r.getCurrentStep(),
                 AppTime.toIso(r.getSubmittedAt()), AppTime.toIso(r.getCreatedAt()));
+    }
+
+    /**
+     * 画面に返す承認ステップの状態。申請がもう承認待ちでない（取下げ・差戻し・却下で打ち切られた）のに
+     * 未処理のまま残っているステップは、「承認待ち」と誤解されないよう SKIPPED（処理なし）として返す。DB の値は変えない。
+     */
+    private static String displayStatus(Request r, ApprovalStep s) {
+        if (StepStatus.WAITING.equals(s.getStatus()) && !RequestStatus.PENDING.equals(r.getStatus())) {
+            return "SKIPPED";
+        }
+        return s.getStatus();
     }
 
     private List<StepDetail> toSteps(Request r, List<ApprovalStep> steps, Map<Long, User> users) {
@@ -314,7 +354,7 @@ public class RequestService {
                     && StepStatus.WAITING.equals(s.getStatus());
             return new StepDetail(s.getStepNo(), s.getStepNo() == 1 ? "上長" : "管理者",
                     s.getApproverId(), approver == null ? null : approver.getName(),
-                    s.getStatus(), s.getComment(), AppTime.toIso(s.getActedAt()), current);
+                    displayStatus(r, s), s.getComment(), AppTime.toIso(s.getActedAt()), current);
         }).toList();
     }
 
@@ -353,7 +393,8 @@ public class RequestService {
     }
 
     private String buildWithdrawnMessage(User applicant, Request r) {
-        String kind = RequestType.LEAVE.equals(r.getRequestType()) ? "休暇申請" : "打刻修正申請";
+        String kind = RequestType.LEAVE.equals(r.getRequestType()) ? "休暇申請"
+                : (RequestType.BREAK_CORRECTION.equals(r.getRequestType()) ? "休憩・離席修正申請" : "打刻修正申請");
         String period = r.getStartDate().equals(r.getEndDate())
                 ? r.getStartDate().toString() : r.getStartDate() + "〜" + r.getEndDate();
         return applicant.getName() + "さんが" + kind + "（" + period + "）を取り下げました。";
@@ -408,6 +449,14 @@ public class RequestService {
         }
         if (r.getReason() == null || r.getReason().isBlank()) {
             throw badInput("理由は必須入力です。");
+        }
+        if (RequestType.BREAK_CORRECTION.equals(r.getRequestType())) {
+            if (r.getCorrectedBreakKind() == null || r.getCorrectedBreakStart() == null || r.getCorrectedBreakEnd() == null) {
+                throw badInput("休憩・離席の種別と開始・終了時刻は必須入力です。");
+            }
+            attendanceService.validateBreakCorrection(r.getUserId(), r.getStartDate(), r.getCorrectedBreakKind(),
+                    r.getCorrectedBreakStart(), r.getCorrectedBreakEnd());
+            return null;
         }
         if (r.getCorrectedClockIn() == null || r.getCorrectedClockOut() == null) {
             throw badInput("修正後の出勤・退勤時刻は必須入力です。");
