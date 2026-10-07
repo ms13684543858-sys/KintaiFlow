@@ -1,6 +1,8 @@
 # 秘密情報・ローカル設定は Git に入れない
 .env
 application-local.properties
+# DB バックアップ（BAT-003 の出力。個人情報を含むため Git に入れない）
+backup/
 # ビルド生成物
 node_modules/
 dist/

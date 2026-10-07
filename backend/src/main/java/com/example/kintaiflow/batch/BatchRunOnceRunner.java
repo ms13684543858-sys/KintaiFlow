@@ -1,5 +1,6 @@
 package com.example.kintaiflow.batch;
 
+import com.example.kintaiflow.service.BackupService;
 import com.example.kintaiflow.service.LeaveGrantService;
 import com.example.kintaiflow.service.MandatoryLeaveAlertService;
 import org.slf4j.Logger;
@@ -33,14 +34,17 @@ public class BatchRunOnceRunner implements ApplicationRunner {
     private final ApplicationContext applicationContext;
     private final LeaveGrantService leaveGrantService;
     private final MandatoryLeaveAlertService mandatoryLeaveAlertService;
+    private final BackupService backupService;
 
     public BatchRunOnceRunner(Environment env, Clock clock, ApplicationContext applicationContext,
-                              LeaveGrantService leaveGrantService, MandatoryLeaveAlertService mandatoryLeaveAlertService) {
+                              LeaveGrantService leaveGrantService, MandatoryLeaveAlertService mandatoryLeaveAlertService,
+                              BackupService backupService) {
         this.env = env;
         this.clock = clock;
         this.applicationContext = applicationContext;
         this.leaveGrantService = leaveGrantService;
         this.mandatoryLeaveAlertService = mandatoryLeaveAlertService;
+        this.backupService = backupService;
     }
 
     @Override
@@ -53,6 +57,7 @@ public class BatchRunOnceRunner implements ApplicationRunner {
             BatchResult r = switch (id) {
                 case "BAT-001" -> leaveGrantService.execute(date);
                 case "BAT-002" -> mandatoryLeaveAlertService.execute(date);
+                case "BAT-003" -> backupService.execute(date);   // target-date はバックアップのファイル名の日付になる
                 default -> throw new IllegalArgumentException("unknown batch id: " + id);
             };
             log.info(r.summary());
