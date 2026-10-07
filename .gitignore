@@ -7,3 +7,6 @@ dist/
 target/
 .idea/
 *.iml
+
+# 設計書の更新前バックアップ（履歴は Git にあるため不要）
+docs_backup/
