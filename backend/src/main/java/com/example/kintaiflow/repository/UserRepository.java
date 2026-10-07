@@ -7,6 +7,9 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import com.example.kintaiflow.dto.GrantCandidate;
+
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -22,6 +25,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByManagerIdAndStatus(Long managerId, String status);
 
     List<User> findByRoleAndStatus(String role, String status);
+
+    /** BAT-001 付与候補（粗い絞り込み。厳密な応当日判定は LeaveGrantCalculator）。 */
+    @Query("select new com.example.kintaiflow.dto.GrantCandidate(u.id, u.hireDate) from User u where u.status = 'ACTIVE' and u.hireDate <= :cutoff order by u.id")
+    List<GrantCandidate> findGrantCandidates(@Param("cutoff") LocalDate cutoff);
 
     /** 行ロック付き。必ずトランザクション内で使う。 */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
