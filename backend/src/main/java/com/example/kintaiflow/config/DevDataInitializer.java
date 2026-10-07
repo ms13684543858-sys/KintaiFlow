@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
@@ -23,6 +24,7 @@ import java.util.Map;
  * 代表アカウント：admin@（管理者）、manager@（上長）、taro@・hanako@（社員）。他は <接頭辞><3桁>@example.com。
  * 本番環境では使用しない（seed-password を設定しなければ動かない）。
  */
+@ConditionalOnProperty(name = "kintaiflow.dev.seed-enabled", havingValue = "true") // 開発用：明示的に有効化した環境でのみ動く（本番では未設定）
 @Component
 @Order(1)
 public class DevDataInitializer implements CommandLineRunner {

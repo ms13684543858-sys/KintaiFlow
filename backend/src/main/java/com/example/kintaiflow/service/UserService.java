@@ -68,6 +68,7 @@ public class UserService {
         validateManager(null, req.managerId());
         User u = new User();
         u.setEmail(email);
+        checkPolicy(req.initialPassword());
         u.setPasswordHash(passwordEncoder.encode(req.initialPassword()));
         u.setName(req.name().strip());
         u.setRole(req.role());
@@ -121,13 +122,23 @@ public class UserService {
     @Transactional
     public UserDetailResponse resetPassword(Long id, PasswordResetRequest req, Long actorId) {
         User u = userRepository.findByIdForUpdate(id).orElseThrow(UserService::notFound);
+        checkPolicy(req.newPassword());
         u.setPasswordHash(passwordEncoder.encode(req.newPassword()));
         u.setMustChangePassword(true); // 管理者が設定したパスワードは本人が変更するまで暫定扱い
+        u.setPasswordChangedAt(java.time.LocalDateTime.now(java.time.ZoneId.of("Asia/Tokyo"))); // 以前に発行されたトークンを失効させる
         u.setFailedLoginCount(0);      // ロック解除も兼ねる
         u.setLockedUntil(null);
         userRepository.saveAndFlush(u);
         log.info("User password reset: id={}, actorId={}", id, actorId);
         return new UserDetailResponse(toResponses(List.of(u)).get(0));
+    }
+
+    /** 管理者が設定するパスワードにも、本人が変更するときと同じポリシー（12文字以上・英字と数字）を適用する。 */
+    private static void checkPolicy(String password) {
+        String problem = AuthService.validatePolicy(password, null);
+        if (problem != null) {
+            throw new BusinessException("E-002", problem, org.springframework.http.HttpStatus.BAD_REQUEST);
+        }
     }
 
     private void validateDepartment(Long departmentId) {

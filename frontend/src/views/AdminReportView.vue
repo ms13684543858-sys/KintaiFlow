@@ -7,13 +7,10 @@ import AppLayout from '../components/AppLayout.vue'
 import { api, auth } from '../api/client'
 import { fmtMinutes, ymOf } from '../utils/format'
 
-const DEPARTMENTS = [
-  { id: 1, name: '管理部' },
-  { id: 2, name: 'システム開発事業部' },
-  { id: 3, name: 'ソリューション事業部' },
-  { id: 4, name: 'SAP事業部' },
-  { id: 5, name: 'クラウド基盤サービス部' }
-]
+const DEPARTMENTS = ref([]) // GET /api/departments から取得
+async function loadDepartments() {
+  try { DEPARTMENTS.value = (await api('GET', '/api/departments')).departments } catch (e) { /* 一覧が出ないだけなので握りつぶす */ }
+}
 const OVERTIME_LIMIT = 2700 // 45時間（分）
 
 const month = ref(ymOf(new Date()))
@@ -77,7 +74,7 @@ async function downloadCsv() {
   } catch (e) { error.value = e.message } finally { downloading.value = false }
 }
 
-onMounted(load)
+onMounted(() => { loadDepartments(); load() })
 </script>
 
 <template>

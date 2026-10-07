@@ -8,13 +8,10 @@ import ConfirmDialog from '../components/ConfirmDialog.vue'
 import { api } from '../api/client'
 import { fmtDate, ROLE, USER_STATUS } from '../utils/format'
 
-const DEPARTMENTS = [
-  { id: 1, name: '管理部' },
-  { id: 2, name: 'システム開発事業部' },
-  { id: 3, name: 'ソリューション事業部' },
-  { id: 4, name: 'SAP事業部' },
-  { id: 5, name: 'クラウド基盤サービス部' }
-]
+const DEPARTMENTS = ref([]) // GET /api/departments から取得
+async function loadDepartments() {
+  try { DEPARTMENTS.value = (await api('GET', '/api/departments')).departments } catch (e) { /* 一覧が出ないだけなので握りつぶす */ }
+}
 
 const users = ref([])
 const loading = ref(false)
@@ -179,7 +176,7 @@ async function doResetPw() {
   } catch (e) { pwError.value = e.message } finally { pwBusy.value = false }
 }
 
-onMounted(() => { load(); loadManagers() })
+onMounted(() => { loadDepartments(); load(); loadManagers() })
 </script>
 
 <template>
@@ -229,7 +226,7 @@ onMounted(() => { load(); loadManagers() })
           </label>
           <label v-else class="field">初期パスワード<span class="req">必須</span>
             <input v-model="form.initialPassword" type="text" autocomplete="off" maxlength="72" />
-            <span class="hint">8〜72文字の半角英数字・記号。初回ログイン時に変更が必要です。</span>
+            <span class="hint">12〜72文字の半角英数字・記号（英字と数字を両方含める）。初回ログイン時に変更が必要です。</span>
           </label>
         </div>
         <p v-if="formError" class="alert alert-error" role="alert" style="margin-top: 16px">{{ formError }}</p>
@@ -302,7 +299,7 @@ onMounted(() => { load(); loadManagers() })
         <p class="modal-msg">{{ pwTarget.name }}（{{ pwTarget.email }}）の新しいパスワードを入力してください。</p>
         <label class="field">新しいパスワード<span class="req">必須</span>
           <input v-model="pwValue" type="text" autocomplete="off" maxlength="72" />
-          <span class="hint">8〜72文字の半角英数字・記号</span>
+          <span class="hint">12〜72文字の半角英数字・記号（英字と数字を両方含める）</span>
         </label>
         <p v-if="pwError" class="alert alert-error" role="alert" style="margin-top: 12px">{{ pwError }}</p>
         <div class="modal-actions">

@@ -19,7 +19,7 @@ public record UserCreateRequest(
         String email,
 
         @NotBlank(message = "初期パスワードは必須入力です。")
-        @Size(min = 8, max = 72, message = "初期パスワードは8文字以上72文字以内で入力してください。")
+        @Size(min = 12, max = 72, message = "初期パスワードは12文字以上72文字以内で入力してください。")
         @Pattern(regexp = "^[\\x21-\\x7E]*$", message = "初期パスワードは半角英数字・記号で入力してください。")
         String initialPassword,
 

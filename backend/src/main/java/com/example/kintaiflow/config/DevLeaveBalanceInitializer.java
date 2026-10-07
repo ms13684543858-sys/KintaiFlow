@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.annotation.Order;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -21,6 +22,7 @@ import java.time.LocalDate;
  * 開発用：leave_balances が空のときだけ、全ユーザーに年次有給休暇 20 日（当年度 4/1 付与）を入れる。
  * DevDataInitializer と同じく kintaiflow.dev.seed-password が設定されているときだけ動く（本番では動かない）。
  */
+@ConditionalOnProperty(name = "kintaiflow.dev.seed-enabled", havingValue = "true") // 開発用：明示的に有効化した環境でのみ動く（本番では未設定）
 @Component
 @Order(3)
 public class DevLeaveBalanceInitializer implements CommandLineRunner {

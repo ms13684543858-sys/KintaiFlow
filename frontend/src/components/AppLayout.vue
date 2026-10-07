@@ -8,6 +8,7 @@ import { ROLE } from '../utils/format'
 const router = useRouter()
 const route = useRoute()
 const user = auth.user()
+const locked = user?.mustChangePassword === true // 初期パスワードのまま：変更が終わるまで他の画面は使えない
 const role = user?.role
 const open = ref(false)           // モバイルのメニュー開閉
 const unread = ref(0)
@@ -70,7 +71,8 @@ watch(() => route.fullPath, () => { open.value = false; loadUnread() })
       </div>
     </header>
     <div class="layout">
-      <nav class="side" :class="{ open }">
+      <nav class="side" :class="{ open, locked }">
+        <div v-if="locked" class="lock-note">パスワードを変更するとメニューが使えるようになります。</div>
         <div v-for="g in menu" :key="g.title" class="group">
           <div class="gtitle">{{ g.title }}</div>
           <router-link v-for="i in g.items" :key="i.to" :to="i.to" class="item">
@@ -102,6 +104,8 @@ watch(() => route.fullPath, () => { open.value = false; loadUnread() })
 .gtitle { padding: 0 10px 4px; font-size: 12px; font-weight: 600; color: var(--muted); }
 .item { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; color: var(--text); text-decoration: none; font-size: 14px; border-radius: 6px; }
 .item:hover { background: var(--navy-100); }
+.side.locked .group { opacity: .4; pointer-events: none; }
+.lock-note { margin: 0 4px 12px; padding: 8px 10px; font-size: 12px; color: var(--muted); background: var(--navy-100); border-radius: 8px; }
 .item.router-link-active { color: #fff; background: var(--navy-700); }
 .count { min-width: 20px; padding: 0 6px; font-size: 12px; text-align: center; color: #fff; background: var(--danger); border-radius: 10px; }
 .body { flex: 1; min-width: 0; max-width: 1100px; margin: 0 auto; padding: 28px 24px; }
