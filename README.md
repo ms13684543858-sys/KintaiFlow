@@ -10,7 +10,9 @@
 > scheduled batch jobs, and a Dockerized one-command demo. It was built through a full Japanese-style waterfall process, and the
 > 86 design documents (Excel, in Japanese) are included. Try it: `docker compose --env-file .env.demo up -d --build`, then open <http://localhost:8081>.
 
-![打刻・月次勤怠](docs/images/02-home-clock.png)
+![デモ：申請から承認までの流れ](docs/images/demo.gif)
+
+<sub>▲ デモ環境を実際に操作した録画（約 40 秒）。社員が出勤を打刻して休暇を申請し、上長 → 管理者の 2 段階で承認され、残日数に反映されるまで。下の「まず触ってみる」の手順で、同じ操作を自分の PC で試せます。</sub>
 
 ## まず触ってみる（Docker で 1 コマンド）
 
@@ -60,7 +62,7 @@ docker compose --env-file .env.demo down -v     # 停止してデータも削除
 </tr>
 </table>
 
-そのほかの画面：[申請一覧](docs/images/03-requests.png) ／ [部下の勤怠集計](docs/images/07-manager-summary.png) ／ [ユーザー管理](docs/images/09-admin-users.png)
+そのほかの画面：[打刻・月次勤怠](docs/images/02-home-clock.png) ／ [申請一覧](docs/images/03-requests.png) ／ [部下の勤怠集計](docs/images/07-manager-summary.png) ／ [ユーザー管理](docs/images/09-admin-users.png)
 
 ## 技術スタック
 
