@@ -1,0 +1,2255 @@
+{
+  "openapi" : "3.1.0",
+  "info" : {
+    "title" : "勤怠フロー API",
+    "description" : "打刻・休暇申請・承認を扱う REST API。設計書 KF-BD-011（API 一覧）の API-ID を、各エンドポイントの名前の先頭に付けています。\n\n**認証**：`POST /api/auth/login` で JWT を取得し、画面右上の **Authorize** に貼り付けると、以降のリクエストに `Authorization: Bearer ...` が付きます。\n\n**エラー**：失敗時は `{ \"code\": \"E-xxx\", \"message\": \"...\", \"fieldErrors\": [...] }` の形式で返します（コード一覧は設計書 KF-BD-006）。\n401 は未認証、403 は権限なし、409 は状態の競合（二重打刻・二重処理など）、423 はアカウントのロックです。",
+    "version" : "1.0"
+  },
+  "servers" : [ {
+    "url" : "http://localhost",
+    "description" : "Generated server url"
+  } ],
+  "security" : [ {
+    "bearerAuth" : [ ]
+  } ],
+  "paths" : {
+    "/api/admin/users/{id}" : {
+      "get" : {
+        "tags" : [ "管理（管理者のみ）" ],
+        "summary" : "API-014 ユーザー詳細",
+        "operationId" : "get",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UserDetailResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put" : {
+        "tags" : [ "管理（管理者のみ）" ],
+        "summary" : "API-014 ユーザー更新",
+        "operationId" : "update",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UserUpdateRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UserDetailResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/users/{id}/password" : {
+      "put" : {
+        "tags" : [ "管理（管理者のみ）" ],
+        "summary" : "API-014 パスワードの設定（管理者による再設定）",
+        "operationId" : "resetPassword",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PasswordResetRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UserDetailResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/leave-types/{id}" : {
+      "get" : {
+        "tags" : [ "管理（管理者のみ）" ],
+        "summary" : "API-015 休暇種別の詳細",
+        "operationId" : "get_1",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LeaveTypeDetailResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put" : {
+        "tags" : [ "管理（管理者のみ）" ],
+        "summary" : "API-015 休暇種別の更新",
+        "operationId" : "update_1",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/LeaveTypeRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LeaveTypeDetailResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/leave-grants/{id}" : {
+      "put" : {
+        "tags" : [ "管理（管理者のみ）" ],
+        "summary" : "API-017 付与日数の調整",
+        "operationId" : "adjust",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/LeaveGrantAdjustRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LeaveGrantResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/requests" : {
+      "get" : {
+        "tags" : [ "申請（休暇・打刻修正）" ],
+        "summary" : "API-006 申請一覧取得",
+        "operationId" : "list",
+        "parameters" : [ {
+          "name" : "status",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RequestListResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "申請（休暇・打刻修正）" ],
+        "summary" : "API-005 申請作成",
+        "operationId" : "create",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CreateRequestRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Created",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CreateRequestResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/requests/{id}/withdraw" : {
+      "post" : {
+        "tags" : [ "申請（休暇・打刻修正）" ],
+        "summary" : "API-008 申請取下げ",
+        "operationId" : "withdraw",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/WithdrawResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/requests/{id}/submit" : {
+      "post" : {
+        "tags" : [ "申請（休暇・打刻修正）" ],
+        "summary" : "API-022 申請提出",
+        "operationId" : "submit",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SubmitRequestResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notifications/{id}/read" : {
+      "post" : {
+        "tags" : [ "通知" ],
+        "summary" : "API-019 通知の既読化",
+        "operationId" : "markAsRead",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/NotificationResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/password" : {
+      "post" : {
+        "tags" : [ "認証" ],
+        "summary" : "API-023 パスワード変更",
+        "operationId" : "changePassword",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ChangePasswordRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK"
+          }
+        }
+      }
+    },
+    "/api/auth/login" : {
+      "post" : {
+        "tags" : [ "認証" ],
+        "summary" : "API-001 ログイン",
+        "operationId" : "login",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ ]
+      }
+    },
+    "/api/attendance/clock-out" : {
+      "post" : {
+        "tags" : [ "打刻・月次勤怠" ],
+        "summary" : "API-003 退勤打刻",
+        "operationId" : "clockOut",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ClockOutResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attendance/clock-in" : {
+      "post" : {
+        "tags" : [ "打刻・月次勤怠" ],
+        "summary" : "API-002 出勤打刻",
+        "operationId" : "clockIn",
+        "responses" : {
+          "201" : {
+            "description" : "Created",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ClockInResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attendance/break-start" : {
+      "post" : {
+        "tags" : [ "打刻・月次勤怠" ],
+        "summary" : "API-024 休憩・離席の開始",
+        "operationId" : "breakStart",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/BreakStartRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Created",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/BreakResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attendance/break-end" : {
+      "post" : {
+        "tags" : [ "打刻・月次勤怠" ],
+        "summary" : "API-025 休憩・離席の終了",
+        "operationId" : "breakEnd",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/BreakResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/approvals/{id}/return" : {
+      "post" : {
+        "tags" : [ "承認（上長・管理者）" ],
+        "summary" : "API-011 差戻し（{id} は承認ステップID）",
+        "operationId" : "returnBack",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ApprovalCommentRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApprovalResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/approvals/{id}/reject" : {
+      "post" : {
+        "tags" : [ "承認（上長・管理者）" ],
+        "summary" : "API-012 却下（{id} は承認ステップID）",
+        "operationId" : "reject",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ApprovalCommentRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApprovalResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/approvals/{id}/approve" : {
+      "post" : {
+        "tags" : [ "承認（上長・管理者）" ],
+        "summary" : "API-010 承認（{id} は承認ステップID）",
+        "operationId" : "approve",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ApprovalCommentRequest"
+              }
+            }
+          }
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ApprovalResultResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/users" : {
+      "get" : {
+        "tags" : [ "管理（管理者のみ）" ],
+        "summary" : "API-014 ユーザー一覧（検索）",
+        "operationId" : "list_1",
+        "parameters" : [ {
+          "name" : "keyword",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "role",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "status",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "departmentId",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UserListResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "管理（管理者のみ）" ],
+        "summary" : "API-014 ユーザー登録",
+        "operationId" : "create_1",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/UserCreateRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Created",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/UserDetailResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/leave-types" : {
+      "get" : {
+        "tags" : [ "管理（管理者のみ）" ],
+        "summary" : "API-015 休暇種別一覧",
+        "operationId" : "list_2",
+        "parameters" : [ {
+          "name" : "activeOnly",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LeaveTypeListResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "管理（管理者のみ）" ],
+        "summary" : "API-015 休暇種別の登録",
+        "operationId" : "create_2",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/LeaveTypeRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Created",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LeaveTypeDetailResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/leave-grants" : {
+      "get" : {
+        "tags" : [ "管理（管理者のみ）" ],
+        "summary" : "API-017 休暇付与の履歴",
+        "operationId" : "list_3",
+        "parameters" : [ {
+          "name" : "userId",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }, {
+          "name" : "leaveTypeId",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LeaveGrantListResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "管理（管理者のみ）" ],
+        "summary" : "API-017 休暇の手動付与",
+        "operationId" : "create_3",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/LeaveGrantCreateRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Created",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LeaveGrantResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/holidays" : {
+      "get" : {
+        "tags" : [ "管理（管理者のみ）" ],
+        "summary" : "API-016 祝日一覧",
+        "operationId" : "list_4",
+        "parameters" : [ {
+          "name" : "year",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/HolidayListResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "管理（管理者のみ）" ],
+        "summary" : "API-016 祝日の登録",
+        "operationId" : "create_4",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/HolidayRequest"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Created",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/HolidayDetailResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/requests/{id}" : {
+      "get" : {
+        "tags" : [ "申請（休暇・打刻修正）" ],
+        "summary" : "API-007 申請詳細取得",
+        "operationId" : "detail",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/RequestDetailResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/notifications" : {
+      "get" : {
+        "tags" : [ "通知" ],
+        "summary" : "API-019 通知一覧取得",
+        "operationId" : "list_5",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/NotificationListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/manager/subordinates/summary" : {
+      "get" : {
+        "tags" : [ "上長向け集計" ],
+        "summary" : "API-020 部下の勤怠・休暇の集計取得",
+        "operationId" : "subordinatesSummary",
+        "parameters" : [ {
+          "name" : "month",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/SubordinateSummaryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/leave-types" : {
+      "get" : {
+        "tags" : [ "休暇の参照" ],
+        "summary" : "API-021 有効休暇種別一覧取得",
+        "operationId" : "list_6",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LeaveTypeOptionListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/leave-balances" : {
+      "get" : {
+        "tags" : [ "休暇の参照" ],
+        "summary" : "API-013 休暇残日数取得",
+        "operationId" : "getBalances",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LeaveBalanceResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/departments" : {
+      "get" : {
+        "tags" : [ "部署の参照" ],
+        "summary" : "API-026 部署一覧取得",
+        "operationId" : "list_7",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DepartmentListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/attendance" : {
+      "get" : {
+        "tags" : [ "打刻・月次勤怠" ],
+        "summary" : "API-004 月次勤怠取得",
+        "operationId" : "getMonthly",
+        "parameters" : [ {
+          "name" : "month",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/MonthlyAttendanceResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/approvals/pending" : {
+      "get" : {
+        "tags" : [ "承認（上長・管理者）" ],
+        "summary" : "API-009 承認待ち一覧",
+        "operationId" : "pending",
+        "parameters" : [ {
+          "name" : "requestType",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "stepNo",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PendingApprovalListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/reports/monthly" : {
+      "get" : {
+        "tags" : [ "管理（管理者のみ）" ],
+        "summary" : "API-018 月次集計取得",
+        "operationId" : "monthly",
+        "parameters" : [ {
+          "name" : "month",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        }, {
+          "name" : "departmentId",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        }, {
+          "name" : "format",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string",
+            "default" : "json"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "type" : "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/holidays/{id}" : {
+      "delete" : {
+        "tags" : [ "管理（管理者のみ）" ],
+        "summary" : "API-016 祝日の削除",
+        "operationId" : "delete",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "integer",
+            "format" : "int64"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/HolidayDetailResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "UserUpdateRequest" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string",
+            "maxLength" : 100,
+            "minLength" : 0
+          },
+          "email" : {
+            "type" : "string",
+            "format" : "email",
+            "maxLength" : 255,
+            "minLength" : 0
+          },
+          "role" : {
+            "type" : "string",
+            "minLength" : 1,
+            "pattern" : "EMPLOYEE|MANAGER|ADMIN"
+          },
+          "departmentId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "managerId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "hireDate" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "status" : {
+            "type" : "string",
+            "minLength" : 1,
+            "pattern" : "ACTIVE|INACTIVE"
+          }
+        },
+        "required" : [ "email", "hireDate", "name", "role", "status" ]
+      },
+      "UserDetailResponse" : {
+        "type" : "object",
+        "properties" : {
+          "user" : {
+            "$ref" : "#/components/schemas/UserResponse"
+          }
+        }
+      },
+      "UserResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "email" : {
+            "type" : "string"
+          },
+          "role" : {
+            "type" : "string"
+          },
+          "departmentId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "departmentName" : {
+            "type" : "string"
+          },
+          "managerId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "managerName" : {
+            "type" : "string"
+          },
+          "hireDate" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          }
+        }
+      },
+      "PasswordResetRequest" : {
+        "type" : "object",
+        "properties" : {
+          "newPassword" : {
+            "type" : "string",
+            "maxLength" : 72,
+            "minLength" : 12,
+            "pattern" : "^[\\x21-\\x7E]*$"
+          }
+        },
+        "required" : [ "newPassword" ]
+      },
+      "LeaveTypeRequest" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string",
+            "maxLength" : 100,
+            "minLength" : 0
+          },
+          "legalBasis" : {
+            "type" : "string",
+            "maxLength" : 100,
+            "minLength" : 0
+          },
+          "isPaid" : {
+            "type" : "boolean"
+          },
+          "maxDaysRule" : {
+            "type" : "string",
+            "minLength" : 1,
+            "pattern" : "LIMITED|UNLIMITED"
+          },
+          "allowHalfDay" : {
+            "type" : "boolean"
+          },
+          "isActive" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "allowHalfDay", "isActive", "isPaid", "maxDaysRule", "name" ]
+      },
+      "LeaveTypeDetailResponse" : {
+        "type" : "object",
+        "properties" : {
+          "leaveType" : {
+            "$ref" : "#/components/schemas/LeaveTypeResponse"
+          }
+        }
+      },
+      "LeaveTypeResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "legalBasis" : {
+            "type" : "string"
+          },
+          "isPaid" : {
+            "type" : "boolean"
+          },
+          "maxDaysRule" : {
+            "type" : "string"
+          },
+          "allowHalfDay" : {
+            "type" : "boolean"
+          },
+          "isActive" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "LeaveGrantAdjustRequest" : {
+        "type" : "object",
+        "properties" : {
+          "grantedDays" : {
+            "type" : "number"
+          },
+          "note" : {
+            "type" : "string",
+            "maxLength" : 200,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "grantedDays" ]
+      },
+      "LeaveGrantResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "leaveTypeId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "leaveTypeName" : {
+            "type" : "string"
+          },
+          "grantedOn" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "grantedDays" : {
+            "type" : "number"
+          },
+          "usedDays" : {
+            "type" : "number"
+          },
+          "remainingDays" : {
+            "type" : "number"
+          },
+          "expiresOn" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "expired" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "CreateRequestRequest" : {
+        "type" : "object",
+        "properties" : {
+          "requestType" : {
+            "type" : "string",
+            "minLength" : 1,
+            "pattern" : "LEAVE|CLOCK_CORRECTION|BREAK_CORRECTION"
+          },
+          "leaveTypeId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "startDate" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "endDate" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "unit" : {
+            "type" : "string",
+            "pattern" : "FULL|AM|PM"
+          },
+          "correctedClockIn" : {
+            "type" : "string",
+            "pattern" : "^([01]\\d|2[0-3]):[0-5]\\d$"
+          },
+          "correctedClockOut" : {
+            "type" : "string",
+            "pattern" : "^([01]\\d|2[0-3]):[0-5]\\d$"
+          },
+          "breakKind" : {
+            "type" : "string",
+            "pattern" : "BREAK|AWAY"
+          },
+          "breakStart" : {
+            "type" : "string",
+            "pattern" : "^([01]\\d|2[0-3]):[0-5]\\d$"
+          },
+          "breakEnd" : {
+            "type" : "string",
+            "pattern" : "^([01]\\d|2[0-3]):[0-5]\\d$"
+          },
+          "reason" : {
+            "type" : "string",
+            "maxLength" : 200,
+            "minLength" : 0
+          },
+          "asDraft" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "requestType" ]
+      },
+      "CreateRequestResponse" : {
+        "type" : "object",
+        "properties" : {
+          "requestId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "status" : {
+            "type" : "string"
+          }
+        }
+      },
+      "WithdrawResponse" : {
+        "type" : "object",
+        "properties" : {
+          "status" : {
+            "type" : "string"
+          }
+        }
+      },
+      "SubmitRequestResponse" : {
+        "type" : "object",
+        "properties" : {
+          "requestId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "status" : {
+            "type" : "string"
+          }
+        }
+      },
+      "NotificationResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "type" : {
+            "type" : "string"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "requestId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "createdAt" : {
+            "type" : "string"
+          },
+          "isRead" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "ChangePasswordRequest" : {
+        "type" : "object",
+        "properties" : {
+          "currentPassword" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "newPassword" : {
+            "type" : "string",
+            "maxLength" : 128,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "currentPassword", "newPassword" ]
+      },
+      "LoginRequest" : {
+        "type" : "object",
+        "properties" : {
+          "email" : {
+            "type" : "string",
+            "maxLength" : 255,
+            "minLength" : 0
+          },
+          "password" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        },
+        "required" : [ "email", "password" ]
+      },
+      "LoginResponse" : {
+        "type" : "object",
+        "properties" : {
+          "token" : {
+            "type" : "string"
+          },
+          "userId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "role" : {
+            "type" : "string"
+          },
+          "mustChangePassword" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "ClockOutResponse" : {
+        "type" : "object",
+        "properties" : {
+          "clockOut" : {
+            "type" : "string"
+          },
+          "workMinutes" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "overtimeMinutes" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "ClockInResponse" : {
+        "type" : "object",
+        "properties" : {
+          "workDate" : {
+            "type" : "string"
+          },
+          "clockIn" : {
+            "type" : "string"
+          }
+        }
+      },
+      "BreakStartRequest" : {
+        "type" : "object",
+        "properties" : {
+          "kind" : {
+            "type" : "string",
+            "minLength" : 1,
+            "pattern" : "BREAK|AWAY"
+          }
+        },
+        "required" : [ "kind" ]
+      },
+      "BreakItem" : {
+        "type" : "object",
+        "properties" : {
+          "kind" : {
+            "type" : "string"
+          },
+          "startAt" : {
+            "type" : "string"
+          },
+          "endAt" : {
+            "type" : "string"
+          }
+        }
+      },
+      "BreakResponse" : {
+        "type" : "object",
+        "properties" : {
+          "workDate" : {
+            "type" : "string"
+          },
+          "openKind" : {
+            "type" : "string"
+          },
+          "breaks" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/BreakItem"
+            }
+          }
+        }
+      },
+      "ApprovalCommentRequest" : {
+        "type" : "object",
+        "properties" : {
+          "comment" : {
+            "type" : "string",
+            "maxLength" : 500,
+            "minLength" : 0
+          }
+        }
+      },
+      "ApprovalResultResponse" : {
+        "type" : "object",
+        "properties" : {
+          "requestStatus" : {
+            "type" : "string"
+          }
+        }
+      },
+      "UserCreateRequest" : {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string",
+            "maxLength" : 100,
+            "minLength" : 0
+          },
+          "email" : {
+            "type" : "string",
+            "format" : "email",
+            "maxLength" : 255,
+            "minLength" : 0
+          },
+          "initialPassword" : {
+            "type" : "string",
+            "maxLength" : 72,
+            "minLength" : 12,
+            "pattern" : "^[\\x21-\\x7E]*$"
+          },
+          "role" : {
+            "type" : "string",
+            "minLength" : 1,
+            "pattern" : "EMPLOYEE|MANAGER|ADMIN"
+          },
+          "departmentId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "managerId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "hireDate" : {
+            "type" : "string",
+            "format" : "date"
+          }
+        },
+        "required" : [ "email", "hireDate", "initialPassword", "name", "role" ]
+      },
+      "LeaveGrantCreateRequest" : {
+        "type" : "object",
+        "properties" : {
+          "userId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "leaveTypeId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "grantedOn" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "grantedDays" : {
+            "type" : "number"
+          },
+          "note" : {
+            "type" : "string",
+            "maxLength" : 200,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "grantedDays", "grantedOn", "leaveTypeId", "userId" ]
+      },
+      "HolidayRequest" : {
+        "type" : "object",
+        "properties" : {
+          "holidayDate" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "name" : {
+            "type" : "string",
+            "maxLength" : 100,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "holidayDate", "name" ]
+      },
+      "HolidayDetailResponse" : {
+        "type" : "object",
+        "properties" : {
+          "holiday" : {
+            "$ref" : "#/components/schemas/HolidayResponse"
+          }
+        }
+      },
+      "HolidayResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "holidayDate" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          }
+        }
+      },
+      "RequestListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "requests" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/RequestSummary"
+            }
+          }
+        }
+      },
+      "RequestSummary" : {
+        "type" : "object",
+        "properties" : {
+          "requestId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "requestType" : {
+            "type" : "string"
+          },
+          "leaveTypeName" : {
+            "type" : "string"
+          },
+          "startDate" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "endDate" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "unit" : {
+            "type" : "string"
+          },
+          "days" : {
+            "type" : "number"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "submittedAt" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "type" : "string"
+          }
+        }
+      },
+      "RequestDetail" : {
+        "type" : "object",
+        "properties" : {
+          "requestId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "requestType" : {
+            "type" : "string"
+          },
+          "applicantId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "applicantName" : {
+            "type" : "string"
+          },
+          "departmentName" : {
+            "type" : "string"
+          },
+          "leaveTypeId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "leaveTypeName" : {
+            "type" : "string"
+          },
+          "startDate" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "endDate" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "unit" : {
+            "type" : "string"
+          },
+          "days" : {
+            "type" : "number"
+          },
+          "correctedClockIn" : {
+            "type" : "string"
+          },
+          "correctedClockOut" : {
+            "type" : "string"
+          },
+          "breakKind" : {
+            "type" : "string"
+          },
+          "breakStart" : {
+            "type" : "string"
+          },
+          "breakEnd" : {
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "currentStep" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "submittedAt" : {
+            "type" : "string"
+          },
+          "createdAt" : {
+            "type" : "string"
+          }
+        }
+      },
+      "RequestDetailResponse" : {
+        "type" : "object",
+        "properties" : {
+          "request" : {
+            "$ref" : "#/components/schemas/RequestDetail"
+          },
+          "steps" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/StepDetail"
+            }
+          },
+          "applicantBalance" : {
+            "type" : "number"
+          }
+        }
+      },
+      "StepDetail" : {
+        "type" : "object",
+        "properties" : {
+          "stepNo" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "stepName" : {
+            "type" : "string"
+          },
+          "approverId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "approverName" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "string"
+          },
+          "comment" : {
+            "type" : "string"
+          },
+          "actedAt" : {
+            "type" : "string"
+          },
+          "current" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "NotificationListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "notifications" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/NotificationResponse"
+            }
+          }
+        }
+      },
+      "MonthlyReportRow" : {
+        "type" : "object",
+        "properties" : {
+          "userId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "userName" : {
+            "type" : "string"
+          },
+          "departmentName" : {
+            "type" : "string"
+          },
+          "workDays" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "workMinutes" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "overtimeMinutes" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "leaveDays" : {
+            "type" : "number"
+          }
+        }
+      },
+      "SubordinateSummaryResponse" : {
+        "type" : "object",
+        "properties" : {
+          "month" : {
+            "type" : "string"
+          },
+          "rows" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/MonthlyReportRow"
+            }
+          }
+        }
+      },
+      "LeaveTypeOptionListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "leaveTypes" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/LeaveTypeOptionResponse"
+            }
+          }
+        }
+      },
+      "LeaveTypeOptionResponse" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "isPaid" : {
+            "type" : "boolean"
+          },
+          "maxDaysRule" : {
+            "type" : "string"
+          },
+          "allowHalfDay" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "Grant" : {
+        "type" : "object",
+        "properties" : {
+          "balanceId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "grantedOn" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "expiresOn" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "grantedDays" : {
+            "type" : "number"
+          },
+          "usedDays" : {
+            "type" : "number"
+          },
+          "remainingDays" : {
+            "type" : "number"
+          }
+        }
+      },
+      "Item" : {
+        "type" : "object",
+        "properties" : {
+          "leaveTypeId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "leaveTypeName" : {
+            "type" : "string"
+          },
+          "annual" : {
+            "type" : "boolean"
+          },
+          "grantedDays" : {
+            "type" : "number"
+          },
+          "usedDays" : {
+            "type" : "number"
+          },
+          "remainingDays" : {
+            "type" : "number"
+          },
+          "expiresOn" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "grants" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Grant"
+            }
+          }
+        }
+      },
+      "LeaveBalanceResponse" : {
+        "type" : "object",
+        "properties" : {
+          "asOf" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "balances" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Item"
+            }
+          },
+          "mandatory5" : {
+            "$ref" : "#/components/schemas/Mandatory5"
+          },
+          "nextGrantDate" : {
+            "type" : "string",
+            "format" : "date"
+          }
+        }
+      },
+      "Mandatory5" : {
+        "type" : "object",
+        "properties" : {
+          "target" : {
+            "type" : "boolean"
+          },
+          "requiredDays" : {
+            "type" : "number"
+          },
+          "takenDays" : {
+            "type" : "number"
+          },
+          "shortageDays" : {
+            "type" : "number"
+          },
+          "achieved" : {
+            "type" : "boolean"
+          },
+          "periodStart" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "periodEnd" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "grantedDays" : {
+            "type" : "number"
+          }
+        }
+      },
+      "DepartmentListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "departments" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/Item"
+            }
+          }
+        }
+      },
+      "AttendanceItem" : {
+        "type" : "object",
+        "properties" : {
+          "workDate" : {
+            "type" : "string"
+          },
+          "clockIn" : {
+            "type" : "string"
+          },
+          "clockOut" : {
+            "type" : "string"
+          },
+          "workMinutes" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "overtimeMinutes" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "breaks" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/BreakItem"
+            }
+          }
+        }
+      },
+      "MonthlyAttendanceResponse" : {
+        "type" : "object",
+        "properties" : {
+          "records" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/AttendanceItem"
+            }
+          },
+          "totalWorkMinutes" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "totalOvertimeMinutes" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "PendingApprovalItem" : {
+        "type" : "object",
+        "properties" : {
+          "stepId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "stepNo" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "requestId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "requestType" : {
+            "type" : "string"
+          },
+          "applicantId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "applicantName" : {
+            "type" : "string"
+          },
+          "departmentName" : {
+            "type" : "string"
+          },
+          "startDate" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "endDate" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "days" : {
+            "type" : "number"
+          },
+          "submittedAt" : {
+            "type" : "string"
+          },
+          "step1ApprovedAt" : {
+            "type" : "string"
+          }
+        }
+      },
+      "PendingApprovalListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PendingApprovalItem"
+            }
+          }
+        }
+      },
+      "UserListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "users" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/UserResponse"
+            }
+          },
+          "total" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        }
+      },
+      "LeaveTypeListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "leaveTypes" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/LeaveTypeResponse"
+            }
+          }
+        }
+      },
+      "LeaveGrantListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "userId" : {
+            "type" : "integer",
+            "format" : "int64"
+          },
+          "userName" : {
+            "type" : "string"
+          },
+          "hireDate" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "nextGrantDate" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "nextStatutoryDays" : {
+            "type" : "number"
+          },
+          "grants" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/LeaveGrantResponse"
+            }
+          }
+        }
+      },
+      "HolidayListResponse" : {
+        "type" : "object",
+        "properties" : {
+          "year" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "holidays" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/HolidayResponse"
+            }
+          }
+        }
+      }
+    },
+    "securitySchemes" : {
+      "bearerAuth" : {
+        "type" : "http",
+        "scheme" : "bearer",
+        "bearerFormat" : "JWT"
+      }
+    }
+  }
+}

@@ -35,6 +35,8 @@ services:
       DB_USER: kintaiflow
       DB_PASSWORD: ${DB_PASSWORD}
       KINTAIFLOW_BATCH_BACKUP_DIR: /backup
+      # API ドキュメント（Swagger UI）。本番では false のまま。デモでは .env.demo で true にする
+      KINTAIFLOW_API_DOCS_ENABLED: ${API_DOCS_ENABLED:-false}
       # 開発用ダミーユーザーを入れたい時だけ設定する。本番では空にする。
       KINTAIFLOW_DEV_SEED_ENABLED: ${DEV_SEED_ENABLED:-false}
       KINTAIFLOW_DEV_SEED_PASSWORD: ${DEV_SEED_PASSWORD:-}

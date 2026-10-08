@@ -83,6 +83,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                         .requestMatchers(HttpMethod.GET, "/actuator/health", "/actuator/health/**").permitAll()
+                        // API ドキュメント。kintaiflow.api-docs.enabled=false（既定）のときは springdoc が無効で 404 になる
+                        .requestMatchers(HttpMethod.GET, "/v3/api-docs", "/v3/api-docs/**", "/swagger-ui.html", "/swagger-ui/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")   // 管理系 API は管理者のみ（多重防御）
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth -> oauth

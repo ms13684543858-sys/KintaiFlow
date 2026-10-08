@@ -39,6 +39,14 @@ class SecurityAccessIT extends IntegrationTestBase {
         mvc.perform(authGet("/api/requests", "not-a-jwt")).andExpect(status().isUnauthorized());
     }
 
+    @Test
+    void apiDocsAreNotExposedUnlessExplicitlyEnabled() throws Exception {
+        // 既定（kintaiflow.api-docs.enabled=false）では、API の一覧を外に見せない。有効化したときの動作は ApiDocsIT
+        mvc.perform(get("/v3/api-docs")).andExpect(status().isNotFound());
+        mvc.perform(get("/swagger-ui/index.html")).andExpect(status().isNotFound());
+        mvc.perform(get("/swagger-ui.html")).andExpect(status().isNotFound());
+    }
+
     // ---------------------------------------------------------------- ロール別アクセス
 
     /** 期待するステータス：管理 API（管理者のみ）／承認待ち（上長・管理者）／部下の集計（上長のみ）。 */

@@ -71,7 +71,7 @@ docker compose --env-file .env.demo down -v     # 停止してデータも削除
 | データベース | PostgreSQL 18、Flyway（スキーマのバージョン管理。JPA は `validate` で定義との一致だけ検査） |
 | 実行環境 | Docker / Docker Compose、nginx（画面の配信と `/api` の中継） |
 | CI | GitHub Actions（バックエンドのテストは Testcontainers の使い捨て PostgreSQL 上で実行、フロントエンドはビルド検証） |
-| テスト | JUnit 5、Mockito、Testcontainers、MockMvc（バックエンド 144 件。うち結合テスト 32 件） |
+| テスト | JUnit 5、Mockito、Testcontainers、MockMvc（バックエンド 149 件。うち API の結合テスト 37 件） |
 
 ### 構成
 
@@ -103,6 +103,23 @@ erDiagram
     requests ||--o{ notifications : "関連申請"
     holidays
 ```
+
+## API ドキュメント
+
+38 のエンドポイントを、設計書 [KF-BD-011（API 一覧）](docs/02_基本設計/04_API・外部IF) の **API-ID 付き**で、OpenAPI 3.1 / Swagger UI として公開しています。デモ環境（上の `.env.demo`）では次の URL で見られます。
+
+- Swagger UI：<http://localhost:8081/swagger-ui.html>（右上の **Authorize** に、`POST /api/auth/login` で取った JWT を貼ると、画面から API を試せます）
+- 仕様書（JSON）：[`docs/api/openapi.json`](docs/api/openapi.json)
+
+<table>
+<tr>
+<td width="50%"><img src="docs/images/10-swagger-overview.png" alt="Swagger UI の概要"><br><sub>Swagger UI（認証方法とエラー形式の説明つき）</sub></td>
+<td width="50%"><img src="docs/images/11-swagger-attendance.png" alt="Swagger UI のエンドポイント一覧"><br><sub>エンドポイントは機能ごとにグループ化し、API-ID を付けている</sub></td>
+</tr>
+</table>
+
+- **本番では公開しません**：`kintaiflow.api-docs.enabled`（環境変数 `API_DOCS_ENABLED`）の既定は `false` で、無効のときは `/swagger-ui.html` も `/v3/api-docs` も 404 です（テストで確認）。
+- **仕様書とコードの同期をテストで保証**しています。エンドポイントを足して説明（`OpenApiConfig`）を書き忘れると、またはコードを変えて `openapi.json` を更新し忘れると、テストが失敗します。更新は `cd backend && ./mvnw test -Dtest=ApiDocsIT -Dopenapi.update=true`。
 
 ## バッチ
 
@@ -151,13 +168,14 @@ cd backend
 
 ## テスト
 
-バックエンドは **144 件**（`./mvnw test`）。ロジックの単体テストに加えて、**実際の Spring コンテキスト（セキュリティ設定・Flyway・JPA）を使い捨ての PostgreSQL に対して動かす結合テスト**があります。
+バックエンドは **149 件**（`./mvnw test`）。ロジックの単体テストに加えて、**実際の Spring コンテキスト（セキュリティ設定・Flyway・JPA）を使い捨ての PostgreSQL に対して動かす結合テスト**があります。
 
 | 区分 | 内容 |
 |---|---|
-| 認証・認可（12 件） | 未ログインと改ざんトークンの拒否、ロール別アクセス（社員・上長・管理者）、ログイン失敗 5 回でロック、メールの正規化、初期パスワードのまま使えないこと、パスワード変更後に古いトークンが失効すること |
+| 認証・認可（13 件） | 未ログインと改ざんトークンの拒否、ロール別アクセス（社員・上長・管理者）、ログイン失敗 5 回でロック、メールの正規化、初期パスワードのまま使えないこと、パスワード変更後に古いトークンが失効すること、API ドキュメントが既定では公開されないこと |
 | 休暇申請と承認（12 件） | 申請 → 上長 → 管理者の 2 段階承認と残日数の更新、差戻し・却下はコメント必須、他人の申請を見られない・承認できない、自分の申請は承認できない、二重処理の防止、期間の重複・残日数不足・日付の逆転の拒否、半日休 |
 | 打刻（8 件） | 二重打刻・出勤前の退勤・休憩中の退勤など不正な状態遷移の拒否、記録が本人にだけ見えること |
+| API ドキュメント（4 件） | 有効にしたときだけ公開される、コードにある全エンドポイントが設計書の API-ID 付きで文書化されている、提出済みの仕様書 `docs/api/openapi.json` が現在のコードと一致する（古くなると失敗） |
 | 単体テスト | 年休の付与日数と応当日（月末・うるう日）、勤務時間の計算、バッチの判定、バックアップの世代管理 など |
 
 権限のテストが本当に効いているかは、検査をわざと外して確認しました（例：承認者の確認を外すと該当テストだけが失敗する）。
